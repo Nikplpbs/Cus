@@ -173,8 +173,9 @@ function renderPage(data){
       </div>
     </div>`).join('');
 
-  // Recent orders
-  const orderHtml = orders.slice(0,10).map(r=>{
+  // ออเดอร์ล่าสุด เรียงวันที่ใหม่สุดก่อน
+  const sortedOrders = [...orders].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const orderHtml = sortedOrders.slice(0,10).map(r=>{
     const tierCol={'L':'#10b981','M':'#6366f1','H':'#f59e0b'}[r.tier]||'#94a3b8';
     return `
     <div class="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
@@ -188,11 +189,35 @@ function renderPage(data){
       </div>
     </div>`; }).join('');
 
-  // Day of week
+  // Day of week — คำนวณจาก orders ที่ได้มา
   const dow = days_of_week || {};
-  const maxDow = Math.max(...Object.values(dow), 1);
-  const bestDow = Object.entries(dow).sort((a,b)=>b[1]-a[1])[0];
-  const dowHtml = Object.entries(dow).map(([day, cnt])=>{
+  // ถ้า days_of_week ว่าง ให้คำนวณจาก orders เอง
+  const dowFinal = {};
+  const dowOrder = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  dowOrder.forEach(d => { dowFinal[d] = dow[d] || 0; });
+
+  // fallback: นับจาก orders.date โดยตรง
+  if(Object.values(dowFinal).every(v=>v===0) && orders.length){
+    const DAY_MAP = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
+    orders.forEach(r => {
+      const ds = String(r.date||'').split('T')[0];
+      if(!ds) return;
+      const parts = ds.split('-');
+      // ใช้ UTC เพื่อกัน timezone shift
+      const d = new Date(Date.UTC(+parts[0], +parts[1]-1, +parts[2]));
+      const nm = DAY_MAP[d.getUTCDay()]||'?';
+      dowFinal[nm] = (dowFinal[nm]||0)+1;
+    });
+    // reorder
+    const tmp={};
+    dowOrder.forEach(d=>{ tmp[d]=dowFinal[d]||0; });
+    Object.assign(dowFinal, tmp);
+  }
+
+  const maxDow = Math.max(...Object.values(dowFinal), 1);
+  const bestDow = Object.entries(dowFinal).sort((a,b)=>b[1]-a[1])[0];
+  const dowHtml = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day=>{
+    const cnt = dowFinal[day]||0;
     const isBest = day === bestDow?.[0];
     const col = isBest ? '#6366f1' : '#cbd5e1';
     return `
@@ -203,7 +228,8 @@ function renderPage(data){
           ${cnt>0?`<span class="text-[10px] font-black text-white pl-2 whitespace-nowrap">${cnt}</span>`:''}
         </div>
       </div>
-      ${isBest?`<span class="text-[10px] font-black text-indigo-600 flex-shrink-0">🔥</span>`:''}
+      <span class="text-[11px] font-bold text-gray-400 w-6 text-right flex-shrink-0">${cnt||''}</span>
+      ${isBest?`<span class="text-[10px] font-black text-indigo-600 flex-shrink-0">🔥</span>`:'<span class="w-4"></span>'}
     </div>`; }).join('');
 
   $id('contentArea').innerHTML=`
