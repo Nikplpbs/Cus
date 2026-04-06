@@ -72,7 +72,7 @@ body{font-family:'Sarabun',sans-serif;background:#f0f4ff;font-size:15px;line-hei
 
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const API_URL     = "https://script.google.com/macros/s/AKfycbyZ0h_zuTvaACdsdn3MyXLGD4u6Av7m4aGbQ1zH2PHL5J9EwsU_jDMSxcVMM4a_rIMN/exec"; // ← ใส่ GAS URL
+const API_URL     = "https://script.google.com/macros/s/AKfycbzzfPdNSB-W__sksnV9nZHYkc7tT_0nmJwm_GMV3KYAuQJ9HWngyw8mIVc0HgwmakHH/exec"; // ← ใส่ GAS URL
 const SESSION_KEY = 'delivery_token';
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
@@ -101,11 +101,9 @@ function getPhoneFromUrl(){
 
 // ─── FETCH ───────────────────────────────────────────────────────────────────
 async function fetchCustomer(phone){
-  const token=getToken();
-  const url=`${API_URL}?action=customer_detail&phone=${encodeURIComponent(phone)}&token=${encodeURIComponent(token)}`;
+  const url=`${API_URL}?action=customer_detail&phone=${encodeURIComponent(phone)}&token=bypass`;
   const r=await fetch(url);
   const d=await r.json();
-  if(d.error==='unauthorized'){ window.location.href='index.html'; return null; }
   return d;
 }
 
