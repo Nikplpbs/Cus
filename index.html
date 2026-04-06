@@ -72,7 +72,7 @@ body{font-family:'Sarabun',sans-serif;background:#f0f4ff;font-size:15px;line-hei
 
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const API_URL     = "AKfycbwQUUE-FS_TkqqUVh2Xqe-RxMmAjr9rOUVDwJV8uHenKv9d33q87OZCsn48XimPworg/exec"; // ← ใส่ GAS URL
+const API_URL     = "https://script.google.com/macros/s/AKfycbyZ0h_zuTvaACdsdn3MyXLGD4u6Av7m4aGbQ1zH2PHL5J9EwsU_jDMSxcVMM4a_rIMN/exec"; // ← ใส่ GAS URL
 const SESSION_KEY = 'delivery_token';
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ async function fetchCustomer(phone){
 
 // ─── RENDER ──────────────────────────────────────────────────────────────────
 function renderPage(data){
-  const { info, orders, items, time_slots, tiers } = data;
+  const { info, orders, items, time_slots, tiers, days_of_week } = data;
 
   // Header
   $id('custName').textContent      = info.ชื่อผู้สั่ง || info.เบอร์ผู้สั่ง || '—';
@@ -187,6 +187,24 @@ function renderPage(data){
       </div>
     </div>`; }).join('');
 
+  // Day of week
+  const dow = days_of_week || {};
+  const maxDow = Math.max(...Object.values(dow), 1);
+  const bestDow = Object.entries(dow).sort((a,b)=>b[1]-a[1])[0];
+  const dowHtml = Object.entries(dow).map(([day, cnt])=>{
+    const isBest = day === bestDow?.[0];
+    const col = isBest ? '#6366f1' : '#cbd5e1';
+    return `
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-[11px] font-bold text-gray-500 w-8 flex-shrink-0">${day}</span>
+      <div class="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+        <div class="h-full rounded-full flex items-center" style="width:${pct(cnt,maxDow)}%;background:${col};min-width:${cnt>0?'2rem':'0'}">
+          ${cnt>0?`<span class="text-[10px] font-black text-white pl-2 whitespace-nowrap">${cnt}</span>`:''}
+        </div>
+      </div>
+      ${isBest?`<span class="text-[10px] font-black text-indigo-600 flex-shrink-0">🔥</span>`:''}
+    </div>`; }).join('');
+
   $id('contentArea').innerHTML=`
     <div>
       <!-- Spending Tier -->
@@ -196,8 +214,17 @@ function renderPage(data){
         <p class="text-[10px] text-gray-400 mt-2">L = &lt;฿100 · M = ฿101-200 · H = ฿201+</p>
       </div>
 
+      <!-- Day of Week -->
+      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in" style="animation-delay:40ms">
+        <div class="flex justify-between items-center mb-4">
+          <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">📅 วันที่สั่งบ่อย</p>
+          ${bestDow?`<span class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">🔥 ${bestDow[0]}</span>`:''}
+        </div>
+        ${dowHtml}
+      </div>
+
       <!-- Time Slot -->
-      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in" style="animation-delay:50ms">
+      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in" style="animation-delay:80ms">
         <div class="flex justify-between items-center mb-4">
           <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">⏰ ช่วงเวลาที่สั่ง</p>
           ${bestSlot?`<span class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">🔥 ${bestSlot[0]}</span>`:''}
@@ -206,13 +233,13 @@ function renderPage(data){
       </div>
 
       <!-- Top Products -->
-      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in" style="animation-delay:100ms">
+      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in" style="animation-delay:120ms">
         <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">🛒 สินค้าที่ซื้อบ่อย</p>
         ${prodHtml||'<p class="text-gray-400 text-sm">ไม่พบข้อมูล</p>'}
       </div>
 
       <!-- Recent Orders -->
-      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in" style="animation-delay:150ms">
+      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in" style="animation-delay:160ms">
         <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">📋 ออเดอร์ล่าสุด</p>
         ${orderHtml||'<p class="text-gray-400 text-sm">ไม่พบข้อมูล</p>'}
       </div>
