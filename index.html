@@ -72,7 +72,7 @@ body{font-family:'Sarabun',sans-serif;background:#f0f4ff;font-size:15px;line-hei
 
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const API_URL     = "https://script.google.com/macros/s/AKfycbxbDrdsqykPJZz8_34T0JpBep420is7tGU-WZd8g0VBzDi-mtr7llOLoNySEg4ywf4c/exec"; // ← ใส่ GAS URL
+const API_URL     = "https://script.google.com/macros/s/AKfycbwGxBZ1C-TqtEKRIYnA4V_l4mI5CxH9t5j7cu5d_1fNawXOh7I5DQokmZEOJQhNimM/exec"; // ← ใส่ GAS URL
 const SESSION_KEY = 'delivery_token';
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
@@ -91,19 +91,27 @@ function progress(v,done=false){
 }
 
 // ─── GET PHONE FROM URL ───────────────────────────────────────────────────────
-function getPhoneFromUrl(){
-  // รองรับทั้ง ?phone= และ #phone=
+function getParamsFromUrl(){
   const p = new URLSearchParams(window.location.search);
-  if(p.get('phone')) return p.get('phone');
   const h = new URLSearchParams(window.location.hash.replace('#',''));
-  return h.get('phone')||'';
+  return {
+    phone: p.get('phone') || h.get('phone') || '',
+    token: p.get('token') || h.get('token') || '',
+  };
 }
+function getPhoneFromUrl(){ return getParamsFromUrl().phone; }
 
 // ─── FETCH ───────────────────────────────────────────────────────────────────
 async function fetchCustomer(phone){
-  const url=`${API_URL}?action=customer_detail&phone=${encodeURIComponent(phone)}&token=bypass`;
-  const r=await fetch(url);
-  const d=await r.json();
+  const { token } = getParamsFromUrl();
+  const url = `${API_URL}?action=customer_detail&phone=${encodeURIComponent(phone)}&token=${encodeURIComponent(token||'bypass')}`;
+  const r = await fetch(url);
+  const d = await r.json();
+  if(d.error==='unauthorized'){
+    $id('custName').textContent = '🔒 ไม่มีสิทธิ์เข้าถึง';
+    $id('contentArea').innerHTML = '<div class="text-center py-16 bg-white rounded-3xl border-2 border-dashed border-gray-200"><p class="text-gray-400 font-bold">กรุณาเข้าถึงจาก Dashboard หลัก</p></div>';
+    return null;
+  }
   return d;
 }
 
