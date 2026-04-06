@@ -92,8 +92,11 @@ function progress(v,done=false){
 
 // ─── GET PHONE FROM URL ───────────────────────────────────────────────────────
 function getPhoneFromUrl(){
-  const p=new URLSearchParams(window.location.search);
-  return p.get('phone')||'';
+  // รองรับทั้ง ?phone= และ #phone=
+  const p = new URLSearchParams(window.location.search);
+  if(p.get('phone')) return p.get('phone');
+  const h = new URLSearchParams(window.location.hash.replace('#',''));
+  return h.get('phone')||'';
 }
 
 // ─── FETCH ───────────────────────────────────────────────────────────────────
