@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Insight</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'Sarabun',sans-serif;background:#f0f4ff;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+@keyframes cardIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card-in{animation:cardIn 0.3s ease both}
+@keyframes barGrow{from{width:0}to{width:var(--w)}}
+.bar-grow{animation:barGrow 0.6s cubic-bezier(.4,0,.2,1) both}
+.hide-scroll::-webkit-scrollbar{display:none}
+.hide-scroll{-ms-overflow-style:none;scrollbar-width:none}
+#progressBar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#6366f1,#a78bfa);width:0%;z-index:9999;transition:width .3s ease,opacity .4s ease;border-radius:0 99px 99px 0}
+</style>
+</head>
+<body class="pb-20 text-slate-800">
+<div id="progressBar"></div>
+
+<div class="max-w-md mx-auto px-4 pt-5">
+
+  <!-- BACK BUTTON -->
+  <button onclick="history.back()" class="mb-4 flex items-center gap-1.5 text-sm font-bold text-gray-500 hover:text-indigo-600 transition-colors">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+    กลับ
+  </button>
+
+  <!-- HEADER CARD -->
+  <div id="headerCard" class="rounded-3xl p-6 mb-5 text-white relative overflow-hidden shadow-xl card-in" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">
+    <div class="absolute -top-8 -right-8 w-36 h-36 rounded-full bg-white/10"></div>
+    <div class="absolute -bottom-6 left-8 w-24 h-24 rounded-full bg-white/5"></div>
+    <div class="relative z-10">
+      <p class="text-indigo-200 text-[10px] font-bold uppercase tracking-widest mb-1">Customer Insight</p>
+      <h1 id="custName" class="text-2xl font-black leading-tight">กำลังโหลด...</h1>
+      <p id="custMeta" class="text-indigo-200 text-sm mt-1.5">—</p>
+      <div class="flex gap-2 mt-3 flex-wrap">
+        <span id="custTierBadge" class="hidden bg-white/20 text-white text-[11px] font-black px-3 py-1 rounded-full"></span>
+        <span id="custAOV" class="hidden bg-white/20 text-white text-[11px] font-black px-3 py-1 rounded-full"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div id="kpiRow" class="hidden grid grid-cols-3 gap-2 mb-5">
+    <div class="rounded-2xl p-3 text-center text-white shadow-md" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">
+      <p class="text-[8px] font-bold opacity-80 uppercase">Orders</p>
+      <p id="kpiOrders" class="text-xl font-black mt-0.5">0</p>
+    </div>
+    <div class="rounded-2xl p-3 text-center text-white shadow-md" style="background:linear-gradient(135deg,#10b981,#059669)">
+      <p class="text-[8px] font-bold opacity-80 uppercase">Revenue</p>
+      <p id="kpiRevenue" class="text-[13px] font-black mt-0.5">฿0</p>
+    </div>
+    <div class="rounded-2xl p-3 text-center text-white shadow-md" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+      <p class="text-[8px] font-bold opacity-80 uppercase">AOV</p>
+      <p id="kpiAOV" class="text-xl font-black mt-0.5">฿0</p>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="contentArea">
+    <div class="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-gray-200">
+      <div class="text-4xl mb-3">⏳</div>
+      <p class="text-gray-400 font-bold">กำลังโหลดข้อมูล...</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const API_URL     = "AKfycbwQUUE-FS_TkqqUVh2Xqe-RxMmAjr9rOUVDwJV8uHenKv9d33q87OZCsn48XimPworg/exec"; // ← ใส่ GAS URL
+const SESSION_KEY = 'delivery_token';
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function esc(s){ if(s==null)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function numFmt(n){ return Number(n||0).toLocaleString('th-TH'); }
+function fmtRev(n){ n=Number(n||0); return n>=1000000?`฿${(n/1000000).toFixed(1)}M`:n>=10000?`฿${(n/1000).toFixed(1)}K`:`฿${numFmt(n)}`; }
+function fmtTH(s){ if(!s)return'—'; try{ const d=String(s).split('T')[0]; const[y,m,dd]=d.split('-'); const M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; return`${+dd} ${M[+m-1]} ${+y+543}`; }catch(e){return'—';} }
+function pct(v,max){ return max>0?Math.round(v/max*100):0; }
+function getToken(){ return sessionStorage.getItem(SESSION_KEY)||''; }
+function $id(id){ return document.getElementById(id); }
+
+function progress(v,done=false){
+  const pb=$id('progressBar'); if(!pb)return;
+  pb.style.width=v+'%'; pb.style.opacity='1';
+  if(done)setTimeout(()=>{pb.style.opacity='0';},400);
+}
+
+// ─── GET PHONE FROM URL ───────────────────────────────────────────────────────
+function getPhoneFromUrl(){
+  const p=new URLSearchParams(window.location.search);
+  return p.get('phone')||'';
+}
+
+// ─── FETCH ───────────────────────────────────────────────────────────────────
+async function fetchCustomer(phone){
+  const token=getToken();
+  const url=`${API_URL}?action=customer_detail&phone=${encodeURIComponent(phone)}&token=${encodeURIComponent(token)}`;
+  const r=await fetch(url);
+  const d=await r.json();
+  if(d.error==='unauthorized'){ window.location.href='index.html'; return null; }
+  return d;
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function renderPage(data){
+  const { info, orders, items, time_slots, tiers } = data;
+
+  // Header
+  $id('custName').textContent      = info.ชื่อผู้สั่ง || info.เบอร์ผู้สั่ง || '—';
+  $id('custMeta').textContent      = `${esc(info.community||'')} · ${esc(info.store_name||'')}`;
+  $id('custTierBadge').textContent = info.customer_group || '';
+  $id('custTierBadge').classList.remove('hidden');
+  $id('custAOV').textContent       = `AOV ${fmtRev(info.avg_order)}`;
+  $id('custAOV').classList.remove('hidden');
+
+  // KPIs
+  $id('kpiRow').classList.remove('hidden');
+  $id('kpiRow').className='grid grid-cols-3 gap-2 mb-5';
+  $id('kpiOrders').textContent  = numFmt(info.order_count);
+  $id('kpiRevenue').textContent = fmtRev(info.total_revenue);
+  $id('kpiAOV').textContent     = fmtRev(info.avg_order);
+
+  // Tier section
+  const tierColor = {'L':'#10b981','M':'#6366f1','H':'#f59e0b'};
+  const tierLabel = {'L':'L — ต่ำกว่า ฿100','M':'M — ฿101-200','H':'H — ฿201+'};
+  const maxTier   = Math.max(...Object.values(tiers),1);
+  const tierHtml  = ['L','M','H'].map(t=>`
+    <div class="flex items-center gap-3 mb-3">
+      <span class="w-8 text-center text-[11px] font-black rounded-lg py-0.5" style="background:${tierColor[t]}20;color:${tierColor[t]}">${t}</span>
+      <div class="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+        <div class="h-full rounded-full flex items-center bar-grow" style="--w:${pct(tiers[t]||0,maxTier)}%;width:${pct(tiers[t]||0,maxTier)}%;background:${tierColor[t]}">
+          ${tiers[t]>0?`<span class="text-[10px] font-black text-white pl-2">${numFmt(tiers[t])} ครั้ง</span>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+
+  // Time slot section
+  const slotColor = {'เช้า':'#f59e0b','กลางวัน':'#6366f1','เย็น':'#ef4444','กลางคืน':'#94a3b8'};
+  const slotEmoji = {'เช้า':'🌅','กลางวัน':'☀️','เย็น':'🌆','กลางคืน':'🌙'};
+  const maxSlot   = Math.max(...Object.values(time_slots),1);
+  const bestSlot  = Object.entries(time_slots).sort((a,b)=>b[1]-a[1])[0];
+  const slotHtml  = Object.entries(time_slots).sort((a,b)=>b[1]-a[1]).map(([slot,cnt])=>`
+    <div class="flex items-center gap-3 mb-3">
+      <span class="text-lg w-6 text-center flex-shrink-0">${slotEmoji[slot]||'🕐'}</span>
+      <div class="flex-1">
+        <p class="text-[11px] font-bold text-gray-600 mb-1">${esc(slot)}</p>
+        <div class="bg-gray-100 rounded-full h-4 overflow-hidden">
+          <div class="h-full rounded-full flex items-center bar-grow" style="--w:${pct(cnt,maxSlot)}%;width:${pct(cnt,maxSlot)}%;background:${slotColor[slot]||'#94a3b8'}">
+            ${cnt>0?`<span class="text-[10px] font-black text-white pl-2">${numFmt(cnt)}</span>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  // Top products
+  const maxProd = items[0]?.times_ordered||1;
+  const prodHtml = items.slice(0,15).map((r,i)=>`
+    <div class="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+      <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-white flex-shrink-0" style="background:#6366f1">${i+1}</div>
+      <div class="flex-1 min-w-0">
+        <p class="font-bold text-gray-800 text-sm truncate">${esc(r.ชื่อสินค้า)}</p>
+        <p class="text-[10px] text-gray-400">${esc(r.ประเภทสินค้า||'—')}</p>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <p class="text-sm font-black text-gray-700">${numFmt(r.times_ordered)}x</p>
+        <p class="text-[10px] text-emerald-600 font-bold">${fmtRev(r.total_spend)}</p>
+      </div>
+    </div>`).join('');
+
+  // Recent orders
+  const orderHtml = orders.slice(0,10).map(r=>{
+    const tierCol={'L':'#10b981','M':'#6366f1','H':'#f59e0b'}[r.tier]||'#94a3b8';
+    return `
+    <div class="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+      <div>
+        <p class="text-sm font-bold text-gray-800">${fmtTH(r.date)}</p>
+        <p class="text-[10px] text-gray-400">${esc(r.time_slot||'—')}</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] font-black px-2 py-0.5 rounded-full text-white" style="background:${tierCol}">${r.tier||'—'}</span>
+        <span class="font-black text-gray-800 text-sm">${fmtRev(r.ราคาสุทธิ)}</span>
+      </div>
+    </div>`; }).join('');
+
+  $id('contentArea').innerHTML=`
+    <div>
+      <!-- Spending Tier -->
+      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in">
+        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">💰 ระดับการใช้จ่าย</p>
+        ${tierHtml}
+        <p class="text-[10px] text-gray-400 mt-2">L = &lt;฿100 · M = ฿101-200 · H = ฿201+</p>
+      </div>
+
+      <!-- Time Slot -->
+      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in" style="animation-delay:50ms">
+        <div class="flex justify-between items-center mb-4">
+          <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">⏰ ช่วงเวลาที่สั่ง</p>
+          ${bestSlot?`<span class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">🔥 ${bestSlot[0]}</span>`:''}
+        </div>
+        ${slotHtml}
+      </div>
+
+      <!-- Top Products -->
+      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in" style="animation-delay:100ms">
+        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">🛒 สินค้าที่ซื้อบ่อย</p>
+        ${prodHtml||'<p class="text-gray-400 text-sm">ไม่พบข้อมูล</p>'}
+      </div>
+
+      <!-- Recent Orders -->
+      <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100 card-in" style="animation-delay:150ms">
+        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">📋 ออเดอร์ล่าสุด</p>
+        ${orderHtml||'<p class="text-gray-400 text-sm">ไม่พบข้อมูล</p>'}
+      </div>
+    </div>`;
+}
+
+// ─── BOOT ────────────────────────────────────────────────────────────────────
+window.onload = async () => {
+  const phone = getPhoneFromUrl();
+  if(!phone){
+    $id('contentArea').innerHTML='<div class="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-gray-200"><p class="text-gray-400 font-bold">ไม่พบข้อมูลลูกค้า</p></div>';
+    return;
+  }
+
+  progress(30);
+  try{
+    const data = await fetchCustomer(phone);
+    if(!data) return;
+    progress(100,true);
+    renderPage(data);
+  } catch(e){
+    progress(100,true);
+    $id('custName').textContent='โหลดไม่สำเร็จ';
+    $id('contentArea').innerHTML='<div class="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-gray-200"><p class="text-gray-400 font-bold">เกิดข้อผิดพลาด</p></div>';
+  }
+};
+</script>
+</body>
+</html>
